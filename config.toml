@@ -1,0 +1,35 @@
+# Per-monitor settings. A monitor listed here with enabled = false is skipped;
+# any other key is passed to the monitor's read(cfg) function. Sections run and
+# show in this order; monitors not listed run with defaults, after these.
+
+# Shared by every monitor (weather, air quality, alerts, earthquakes).
+[home]
+name = "San Ramon, CA"
+latitude = 37.78
+longitude = -121.98
+
+[cpu]
+[ram]
+[gpu]
+[temps]
+[network]
+
+[disk]
+# paths = ["/", "/home", "~/work"]
+# warn = 80
+# crit = 92
+
+[docker]
+
+[weather]
+unit = "fahrenheit"
+
+[air]
+[alerts]
+
+[quakes]
+# radius_km = 100
+# min_magnitude = 2.5
+
+[updates]
+[reboot]
