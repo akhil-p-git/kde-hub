@@ -2,7 +2,7 @@
 # any other key is passed to the monitor's read(cfg) function. Sections run and
 # show in this order; monitors not listed run with defaults, after these.
 
-# Shared by every monitor (weather, air quality, alerts, earthquakes).
+# Shared by every monitor (currently just weather).
 [home]
 name = "San Ramon, CA"
 latitude = 37.78
@@ -23,13 +23,6 @@ longitude = -121.98
 
 [weather]
 unit = "fahrenheit"
-
-[air]
-[alerts]
-
-[quakes]
-# radius_km = 100
-# min_magnitude = 2.5
 
 [updates]
 [reboot]

@@ -5,7 +5,7 @@ import pytest
 
 from kdehub import core
 from kdehub.core import CRIT, OK, WARN, format_rate, level_for
-from kdehub.monitors import air, alerts, disk, docker, gpu, network, quakes, reboot, updates, weather
+from kdehub.monitors import disk, docker, gpu, network, reboot, updates, weather
 
 
 def test_level_for_thresholds():
@@ -20,7 +20,7 @@ def test_format_rate():
 
 def test_discover_finds_all_and_honours_disabled():
     names = {m.__name__.rsplit(".", 1)[-1] for m in core.discover({})}
-    assert {"cpu", "ram", "gpu", "temps", "network", "updates", "reboot", "weather", "disk", "docker", "air", "alerts", "quakes"} <= names
+    assert {"cpu", "ram", "gpu", "temps", "network", "updates", "reboot", "weather", "disk", "docker"} <= names
     assert "cpu" not in {m.__name__.rsplit(".", 1)[-1] for m in core.discover({"cpu": {"enabled": False}})}
 
 
@@ -89,44 +89,6 @@ def test_weather_parse():
     assert rows["Rain chance"].value == "1%"
     assert rows["Sun"].value == "7:31 AM – 6:11 PM"
     assert rows["UV (max today)"].level == CRIT
-
-
-@pytest.mark.parametrize("aqi,category,level", [
-    (50, "Good", OK), (67, "Moderate", OK), (101, "Unhealthy for sensitive groups", WARN),
-    (180, "Unhealthy", CRIT), (400, "Hazardous", CRIT)])
-def test_air_classify(aqi, category, level):
-    assert air.classify(aqi) == (category, level)
-
-
-def test_air_parse():
-    rows = air.parse({"current": {"us_aqi": 67, "pm2_5": 8.1}})
-    assert [(r.label, r.value) for r in rows] == [("US AQI", "67 (Moderate)"), ("PM2.5", "8.1 µg/m³")]
-
-
-def test_alerts_none_and_severity():
-    assert alerts.parse({"features": []})[0].value == "none active"
-    feats = [{"properties": {"event": "Red Flag Warning", "severity": "Severe", "headline": "Fire weather"}},
-             {"properties": {"event": "Wind Advisory", "severity": "Minor", "headline": None}}]
-    first, second = alerts.parse({"features": feats})
-    assert (first.label, first.level) == ("Red Flag Warning", CRIT)
-    assert (second.label, second.level, second.value) == ("Wind Advisory", WARN, "")
-
-
-def quake(mag, age_s, now=1_000_000.0):
-    return {"features": [{"properties": {"mag": mag, "place": "2 km NE of Pacifica, CA",
-                                         "time": (now - age_s) * 1000}}]}, now
-
-
-@pytest.mark.parametrize("mag,age,level,text", [
-    (2.7, 3 * 86400, OK, "3 days ago"), (3.2, 7200, WARN, "2 hours ago"),
-    (4.5, 600, CRIT, "10 min ago"), (4.5, 2 * 86400, OK, "2 days ago")])
-def test_quakes_parse(mag, age, level, text):
-    (row,) = quakes.parse(*quake(mag, age))
-    assert row.level == level and row.value.endswith(text) and row.value.startswith(f"M{mag}")
-
-
-def test_quakes_none():
-    assert quakes.parse({"features": []}, 0)[0].value == "none in range"
 
 
 def test_monitor_cfg_layers_home_under_section():
