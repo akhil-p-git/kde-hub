@@ -1,6 +1,7 @@
 """System tray app: runs monitors on their intervals, shows them in a popup window."""
 from __future__ import annotations
 
+import html
 import sys
 import time
 import tomllib
@@ -42,8 +43,9 @@ def render_section(readings: list[Reading]) -> str:
     rows = []
     for r in readings:
         color = COLORS.get(r.level)
-        value = f'<span style="color:{color}">{r.value}</span>' if color else r.value
-        rows.append(f"<tr><td style='padding-right:12px'><i>{r.label}</i></td><td>{value}</td></tr>")
+        label, value = html.escape(r.label), html.escape(r.value)  # values come from the network and subprocesses
+        value = f'<span style="color:{color}">{value}</span>' if color else value
+        rows.append(f"<tr><td style='padding-right:12px'><i>{label}</i></td><td>{value}</td></tr>")
     return f"<table>{''.join(rows)}</table>"
 
 

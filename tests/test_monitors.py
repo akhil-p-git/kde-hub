@@ -174,3 +174,10 @@ def test_docker_parse_counts_and_unhealthy():
 
 def test_docker_parse_no_unhealthy_row_when_healthy():
     assert "Unhealthy" not in {r.label for r in docker.parse(["running|Up 1 hour"], DF)}
+
+
+def test_render_section_escapes_markup():
+    from kdehub.app import render_section
+    out = render_section([core.Reading("<b>x</b>", '<img src="file:///etc/passwd"> & more', WARN)])
+    assert "<img" not in out and "<b>" not in out
+    assert "&lt;img" in out and "&amp; more" in out
