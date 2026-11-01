@@ -5,16 +5,13 @@ from kdehub.core import OK, WARN, Reading
 
 NAME = "npm (global)"
 INTERVAL = 3600
-SHOWN = 6
 
 
 def parse(payload):
     if not payload:
         return [Reading("Updates", "up to date")]
     names = [f"{name} {info['current']} → {info['latest']}" for name, info in sorted(payload.items())]
-    return [Reading("Updates", f"{len(names)} available", WARN)] + [
-        Reading("Package", n, OK) for n in names[:SHOWN]] + (
-        [Reading("More", f"+{len(names) - SHOWN} more", OK)] if len(names) > SHOWN else [])
+    return [Reading("Updates", f"{len(names)} available", WARN)] + [Reading("Package", n, OK) for n in names]
 
 
 def read(cfg):

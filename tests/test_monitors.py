@@ -195,10 +195,17 @@ def test_npm_read_failure_raises(monkeypatch):
         npm.read({})
 
 
-def test_npm_caps_listed_packages():
-    payload = {f"p{i}": {"current": "1", "latest": "2"} for i in range(9)}
+def test_npm_lists_every_package():
+    payload = {f"p{i}": {"current": "1", "latest": "2"} for i in range(30)}
     rows = npm.parse(payload)
-    assert rows[0].value == "9 available" and rows[-1].value == "+3 more" and len(rows) == 8
+    assert rows[0].value == "30 available" and len(rows) == 31 and rows[-1].value == "p9 1 → 2"
+
+
+def test_pacman_and_aur_list_every_package():
+    out = "".join(f"pkg{i} 1 -> 2\n" for i in range(30))
+    for mod in (updates, aur):
+        names = mod.parse(out)[1].value
+        assert names.count(",") == 29 and "…" not in names
 
 
 def test_pending_updates_sums_update_monitors_only():

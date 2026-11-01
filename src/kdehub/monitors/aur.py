@@ -4,14 +4,13 @@ from kdehub.core import OK, WARN, Reading
 
 NAME = "AUR"
 INTERVAL = 1800
-SHOWN = 8
 
 
 def parse(stdout):
     pkgs = [line.split()[0] for line in stdout.splitlines() if line.strip()]
     if not pkgs:
         return [Reading("Updates", "up to date")]
-    names = ", ".join(pkgs[:SHOWN]) + (" …" if len(pkgs) > SHOWN else "")
+    names = ", ".join(pkgs)
     return [Reading("Updates", f"{len(pkgs)} available", WARN), Reading("Packages", names, OK)]
 
 

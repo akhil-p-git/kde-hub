@@ -4,7 +4,6 @@ from kdehub.core import OK, WARN, Reading
 
 NAME = "Pacman"
 INTERVAL = 1800
-SHOWN = 8
 
 
 def parse(stdout):
@@ -12,7 +11,7 @@ def parse(stdout):
     if not pkgs:
         return [Reading("Updates", "up to date")]
     out = [Reading("Updates", f"{len(pkgs)} available", WARN)]
-    out.append(Reading("Packages", ", ".join(pkgs[:SHOWN]) + (" …" if len(pkgs) > SHOWN else ""), OK))
+    out.append(Reading("Packages", ", ".join(pkgs), OK))
     return out
 
 
