@@ -5,7 +5,7 @@ import pytest
 
 from kdehub import core
 from kdehub.core import CRIT, OK, WARN, format_rate, level_for
-from kdehub.monitors import disk, docker, gpu, network, reboot, updates, weather
+from kdehub.monitors import aur, disk, docker, gpu, network, npm, reboot, updates, weather
 
 
 def test_level_for_thresholds():
@@ -20,7 +20,7 @@ def test_format_rate():
 
 def test_discover_finds_all_and_honours_disabled():
     names = {m.__name__.rsplit(".", 1)[-1] for m in core.discover({})}
-    assert {"cpu", "ram", "gpu", "temps", "network", "updates", "reboot", "weather", "disk", "docker"} <= names
+    assert {"cpu", "ram", "gpu", "temps", "network", "updates", "reboot", "weather", "disk", "docker", "aur", "npm"} <= names
     assert "cpu" not in {m.__name__.rsplit(".", 1)[-1] for m in core.discover({"cpu": {"enabled": False}})}
 
 
@@ -143,3 +143,69 @@ def test_render_section_escapes_markup():
     out = render_section([core.Reading("<b>x</b>", '<img src="file:///etc/passwd"> & more', WARN)])
     assert "<img" not in out and "<b>" not in out
     assert "&lt;img" in out and "&amp; more" in out
+
+
+@pytest.mark.parametrize("code,out,err,expected", [
+    (1, "", "", "up to date"),
+    (0, "", "", "up to date"),
+    (0, "foo-bin 1.0-1 -> 1.1-1\nbar 2 -> 3\n", "", "2 available"),
+    (1, "foo-bin 1.0-1 -> 1.1-1\n", "", "1 available"),
+])
+def test_aur_read(monkeypatch, code, out, err, expected):
+    monkeypatch.setattr(aur.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, code, out, err))
+    assert aur.read({})[0].value == expected
+
+
+def test_aur_error_raises(monkeypatch):
+    monkeypatch.setattr(aur.subprocess, "run",
+                        lambda *a, **k: subprocess.CompletedProcess(a, 1, "", "error: failed to connect"))
+    with pytest.raises(RuntimeError, match="failed to connect"):
+        aur.read({})
+
+
+# shape taken from a real `npm outdated -g --json` run
+NPM_OUTDATED = ('{"is-odd": {"current": "1.0.0", "wanted": "3.0.1", "latest": "3.0.1", '
+                '"dependent": "global", "location": "/x/is-odd"}}')
+
+
+def test_npm_read_outdated_exit_1_is_not_an_error(monkeypatch):
+    monkeypatch.setattr(npm.subprocess, "run",
+                        lambda *a, **k: subprocess.CompletedProcess(a, 1, NPM_OUTDATED, ""))
+    rows = npm.read({})
+    assert rows[0].value == "1 available" and rows[0].level == WARN
+    assert rows[1].value == "is-odd 1.0.0 → 3.0.1"
+
+
+def test_npm_read_up_to_date(monkeypatch):
+    monkeypatch.setattr(npm.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0, "{}\n", ""))
+    assert npm.read({})[0].value == "up to date"
+
+
+def test_npm_read_exit_1_with_no_output_and_an_error_raises(monkeypatch):
+    # npm also exits 1 for real failures such as no network; that must not read as "up to date"
+    monkeypatch.setattr(npm.subprocess, "run",
+                        lambda *a, **k: subprocess.CompletedProcess(a, 1, "", "npm error code EAI_AGAIN"))
+    with pytest.raises(RuntimeError, match="EAI_AGAIN"):
+        npm.read({})
+
+
+def test_npm_read_failure_raises(monkeypatch):
+    monkeypatch.setattr(npm.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 2, "", "boom"))
+    with pytest.raises(RuntimeError, match="boom"):
+        npm.read({})
+
+
+def test_npm_caps_listed_packages():
+    payload = {f"p{i}": {"current": "1", "latest": "2"} for i in range(9)}
+    rows = npm.parse(payload)
+    assert rows[0].value == "9 available" and rows[-1].value == "+3 more" and len(rows) == 8
+
+
+def test_pending_updates_sums_update_monitors_only():
+    R = core.Reading
+    last = {"updates": [R("Updates", "3 available", WARN)], "aur": [R("Updates", "up to date")],
+            "npm": [R("Updates", "2 available", WARN), R("Package", "x 1 → 2")],
+            "cpu": [R("Usage", "55%")]}
+    assert core.pending_updates(last) == 5
+    assert core.pending_updates({"cpu": [R("Usage", "55%")]}) is None
+    assert core.pending_updates({"npm": [R("error", "RuntimeError: boom", WARN)]}) is None

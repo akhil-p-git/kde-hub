@@ -13,10 +13,12 @@ Monitors:
 | Disk | used / total per path | `psutil` |
 | Docker | container counts, image/volume/build-cache size | `docker ps`, `docker system df` |
 | Weather | temperature, sky, high/low, rain chance, UV, sunrise/sunset | [Open-Meteo](https://open-meteo.com/) |
-| Pacman | pending updates | `checkupdates` (`pacman-contrib`) |
+| Pacman | pending repo updates | `checkupdates` (`pacman-contrib`) |
+| AUR | pending AUR updates | `yay -Qua` |
+| npm (global) | outdated global npm packages | `npm outdated -g` |
 | Reboot | whether the running kernel was upgraded away | `/usr/lib/modules` |
 
-Network is throughput, not an internet speed test. Pacman and Reboot are Arch-specific; the rest should work on any Linux with the listed tools. I have only run it on Arch Linux with Plasma 6 on Wayland.
+Network is throughput, not an internet speed test. Pacman, AUR and Reboot are Arch-specific; the rest should work on any Linux with the listed tools. I have only run it on Arch Linux with Plasma 6 on Wayland.
 
 ## Run
 

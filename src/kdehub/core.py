@@ -42,6 +42,21 @@ def format_rate(bytes_per_s: float) -> str:
     raise AssertionError("unreachable")
 
 
+UPDATE_MONITORS = ("updates", "aur", "npm")
+
+
+def pending_updates(last: dict[str, list[Reading]]) -> int | None:
+    """Total packages awaiting update across the update monitors; None until one has reported."""
+    total, seen = 0, False
+    for key in UPDATE_MONITORS:
+        for r in last.get(key, []):
+            if r.label == "Updates":
+                seen = True
+                if r.value.endswith(" available"):
+                    total += int(r.value.split()[0])
+    return total if seen else None
+
+
 def monitor_cfg(config: dict, key: str) -> dict:
     """A monitor's own section layered over the shared [home] section."""
     return {**config.get("home", {}), **config.get(key, {})}

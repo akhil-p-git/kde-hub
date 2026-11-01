@@ -12,7 +12,7 @@ from PySide6.QtGui import QAction, QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (QApplication, QLabel, QMenu, QScrollArea,
                                QSystemTrayIcon, QVBoxLayout, QWidget)
 
-from kdehub.core import CRIT, WARN, Reading, discover, monitor_cfg, safe_read
+from kdehub.core import CRIT, WARN, Reading, discover, monitor_cfg, pending_updates, safe_read
 
 CONFIG_PATH = Path.home() / ".config" / "kde-hub" / "config.toml"
 DEFAULT_CONFIG = Path(__file__).resolve().parents[2] / "config.toml"
@@ -76,7 +76,6 @@ class Hub(QWidget):
         self.next_run = {m.__name__: 0.0 for m in self.modules}
         self.running: set[str] = set()
         self.last: dict[str, list[Reading]] = {}
-        self.alerted: set[tuple[str, str]] = set()
         self.pool = QThreadPool.globalInstance()
         self.signals = _Signals()
         self.signals.done.connect(self.on_result)
@@ -142,21 +141,14 @@ class Hub(QWidget):
         self.running.discard(key)
         self.last[key] = readings
         self.sections[key].setText(render_section(readings))
-        for r in readings:
-            tag = (key, r.label)
-            if r.level == CRIT and tag not in self.alerted:
-                self.alerted.add(tag)
-                self.tray.showMessage(f"{r.label}: {r.value}", key, QSystemTrayIcon.MessageIcon.Warning)
-            elif r.level != CRIT:
-                self.alerted.discard(tag)
         self.update_tray()
 
     def update_tray(self):
-        cpu = next((r for r in self.last.get("cpu", []) if r.label == "Usage"), None)
+        pending = pending_updates(self.last)
         worst = CRIT if any(r.level == CRIT for rs in self.last.values() for r in rs) else \
             WARN if any(r.level == WARN for rs in self.last.values() for r in rs) else "ok"
-        if cpu:
-            self.tray.setIcon(tray_icon(cpu.value.rstrip("%"), worst))
+        if pending is not None:
+            self.tray.setIcon(tray_icon("99+" if pending > 99 else str(pending), worst))
         self.tray.setToolTip("\n".join(f"{k}: " + ", ".join(f"{r.label} {r.value}" for r in rs)
                                        for k, rs in self.last.items()))
 
