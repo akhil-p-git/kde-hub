@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (QApplication, QLabel, QMenu, QScrollArea,
 from kdehub.core import CRIT, WARN, Reading, discover, monitor_cfg, pending_updates, safe_read
 
 CONFIG_PATH = Path.home() / ".config" / "kde-hub" / "config.toml"
+LOGO_PATH = Path(__file__).parent / "assets" / "icon.png"
 DEFAULT_CONFIG = Path(__file__).resolve().parents[2] / "config.toml"
 COLORS = {WARN: "#e0a030", CRIT: "#e04040"}
 # Tray menu label -> shell script run inside Konsole. sudo needs a real terminal, so the
@@ -64,19 +65,19 @@ def render_section(readings: list[Reading]) -> str:
 
 
 def tray_icon(text: str, level: str) -> QIcon:
-    pix = QPixmap(64, 64)
-    pix.fill(Qt.GlobalColor.transparent)
+    """The KDE logo with the pending-update count in a badge colored by the worst reading level."""
+    pix = QPixmap(str(LOGO_PATH)).scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio,
+                                         Qt.TransformationMode.SmoothTransformation)
     p = QPainter(pix)
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
-    p.setBrush(QColor(COLORS.get(level, "#3a7bd5")))
-    p.setPen(Qt.PenStyle.NoPen)
-    p.drawRoundedRect(2, 2, 60, 60, 12, 12)
+    p.setBrush(QColor(COLORS.get(level, "#2e9e5b")))
     p.setPen(QColor("white"))
+    p.drawEllipse(26, 26, 38, 38)
     font = QFont()
     font.setBold(True)
-    font.setPixelSize(30)
+    font.setPixelSize(20 if len(text) < 3 else 15)
     p.setFont(font)
-    p.drawText(pix.rect(), Qt.AlignmentFlag.AlignCenter, text)
+    p.drawText(26, 26, 38, 38, Qt.AlignmentFlag.AlignCenter, text)
     p.end()
     return QIcon(pix)
 
@@ -85,6 +86,7 @@ class Hub(QWidget):
     def __init__(self, config: dict):
         super().__init__()
         self.setWindowTitle("KDE Hub")
+        self.setWindowIcon(QIcon(str(LOGO_PATH)))
         self.config = config
         self.modules = discover(config)
         self.next_run = {m.__name__: 0.0 for m in self.modules}
