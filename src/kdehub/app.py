@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import html
+import subprocess
 import sys
 import time
 import tomllib
@@ -17,6 +18,19 @@ from kdehub.core import CRIT, WARN, Reading, discover, monitor_cfg, pending_upda
 CONFIG_PATH = Path.home() / ".config" / "kde-hub" / "config.toml"
 DEFAULT_CONFIG = Path(__file__).resolve().parents[2] / "config.toml"
 COLORS = {WARN: "#e0a030", CRIT: "#e04040"}
+# Tray menu label -> shell script run inside Konsole. sudo needs a real terminal, so the
+# app never runs these itself. "Update all" uses `yay -Sua` (AUR only) because pacman already ran.
+UPDATE_SCRIPTS = {
+    "Update system (pacman -Syu)": "sudo pacman -Syu",
+    "Update AUR + system (yay -Syu)": "yay -Syu",
+    "Update npm globals (npm update -g)": "npm update -g",
+    "Update all": "sudo pacman -Syu && yay -Sua && npm update -g",
+}
+
+
+def konsole_argv(script: str) -> list[str]:
+    """Konsole command line that runs `script` and keeps the window open afterwards."""
+    return ["konsole", "--hold", "-e", "bash", "-c", script]
 
 
 def load_config() -> dict:
@@ -107,6 +121,12 @@ class Hub(QWidget):
         quit_ = QAction("Quit", menu)
         quit_.triggered.connect(QApplication.quit)
         menu.addAction(show)
+        menu.addSeparator()
+        for label, script in UPDATE_SCRIPTS.items():
+            action = QAction(label, menu)
+            action.triggered.connect(lambda _checked=False, script=script: self.run_in_terminal(script))
+            menu.addAction(action)
+        menu.addSeparator()
         menu.addAction(quit_)
         self.tray.setContextMenu(menu)
         self.tray.activated.connect(
@@ -116,6 +136,13 @@ class Hub(QWidget):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.tick)
         self.timer.start(500)
+
+    def run_in_terminal(self, script: str):
+        try:
+            subprocess.Popen(konsole_argv(script), start_new_session=True)
+        except OSError as err:
+            self.tray.showMessage("KDE Hub", f"Could not start konsole: {err}",
+                                  QSystemTrayIcon.MessageIcon.Critical)
 
     def toggle(self):
         self.setVisible(not self.isVisible())

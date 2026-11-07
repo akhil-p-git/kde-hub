@@ -32,6 +32,8 @@ make test       # uv run pytest
 make install    # start on login, and copy config.toml to ~/.config/kde-hub/
 ```
 
+Right-click the tray icon for update actions (`sudo pacman -Syu`, `yay -Syu`, `npm update -g`, or all three in sequence). Each opens in Konsole and stays open when finished, because `sudo` needs a terminal for the password.
+
 On Wayland the popup opens as an ordinary window; apps cannot place windows next to the tray icon there.
 
 ## Configure
