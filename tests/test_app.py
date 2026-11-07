@@ -1,4 +1,6 @@
-from kdehub.app import UPDATE_SCRIPTS, konsole_argv
+import sys
+
+from kdehub.app import UPDATE_SCRIPTS, konsole_argv, restart_argv
 
 
 def test_konsole_argv_holds_window_and_runs_script_via_bash():
@@ -12,3 +14,8 @@ def test_update_menu_commands():
         "npm update -g",
         "sudo pacman -Syu && yay -Sua && npm update -g",
     ]
+
+
+def test_restart_argv_reuses_interpreter_and_arguments(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["/x/kde-hub", "--show"])
+    assert restart_argv() == [sys.executable, "/x/kde-hub", "--show"]

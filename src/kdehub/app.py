@@ -29,6 +29,11 @@ UPDATE_SCRIPTS = {
 }
 
 
+def restart_argv() -> list[str]:
+    """Command line that starts a fresh copy of this app with the same arguments."""
+    return [sys.executable, *sys.argv]
+
+
 def konsole_argv(script: str) -> list[str]:
     """Konsole command line that runs `script` and keeps the window open afterwards."""
     return ["konsole", "--hold", "-e", "bash", "-c", script]
@@ -129,6 +134,9 @@ class Hub(QWidget):
             action.triggered.connect(lambda _checked=False, script=script: self.run_in_terminal(script))
             menu.addAction(action)
         menu.addSeparator()
+        restart = QAction("Restart KDE Hub", menu)
+        restart.triggered.connect(self.restart)
+        menu.addAction(restart)
         menu.addAction(quit_)
         self.tray.setContextMenu(menu)
         self.tray.activated.connect(
@@ -145,6 +153,15 @@ class Hub(QWidget):
         except OSError as err:
             self.tray.showMessage("KDE Hub", f"Could not start konsole: {err}",
                                   QSystemTrayIcon.MessageIcon.Critical)
+
+    def restart(self):
+        try:
+            subprocess.Popen(restart_argv(), start_new_session=True)
+        except OSError as err:
+            self.tray.showMessage("KDE Hub", f"Could not restart: {err}",
+                                  QSystemTrayIcon.MessageIcon.Critical)
+            return
+        QApplication.quit()
 
     def toggle(self):
         self.setVisible(not self.isVisible())
